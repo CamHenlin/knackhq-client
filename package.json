@@ -1,0 +1,14 @@
+{
+  "name": "knackhq-client",
+  "version": "0.0.1",
+  "description": "KnackHQ API Client Module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Cameron Henlin <cam.henlin@gmail.com> (https://github.com/CamHenlin/)",
+  "license": "ISC",
+  "dependencies": {
+    "follow-redirects": "0.0.3"
+  }
+}
