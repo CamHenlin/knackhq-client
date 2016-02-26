@@ -1,8 +1,8 @@
 'use strict';
 
 var http_client;
-var debug = true;
-var dev = true;
+var debug = false;
+var dev = false;
 
 if (dev) {
   http_client = require('follow-redirects').http;
@@ -10,22 +10,20 @@ if (dev) {
   http_client = require('follow-redirects').https;
 }
 
-var log = function(input) {
-  if (debug) {
-    console.log(JSON.stringify(input));
-  }
-}
+var request = require('request');
+var fs = require('fs');
+var _ = require('lodash');
 
-// Constructor
+var log = console.log;
+
 var KnackHQClient = function() {};
 
-// Methods
 KnackHQClient.prototype = {
   mode: null,
   token: null,
   appid: null,
   apikey: null,
-  api_url: (dev) ? 'api.knack.localhost' : 'api.knackhq.com',
+  api_url: (dev) ? 'api.localknack' : 'api.knackhq.com',
   authenticate: function(options, callback) {
     if (!options || !options.appid && (!options.token || !options.apikey || !(options.email && options.password))) { throw new Error('must pass appid and token, restkey, or credentials as options'); }
 
@@ -48,13 +46,13 @@ KnackHQClient.prototype = {
 
     return callback();
   },
-  authenticateUser: function(options, callback) {
+  authenticate_user: function(options, callback) {
     var _this = this;
     if (!options.email || !options.password) { return; }
 
     this.request({ body: { email: options.email, password: options.password }, path: '/v1/applications/' + this.appid + '/session' }, function(error, data) {
-      log(error)
-      log(data)
+      // log(error)
+      // log(data)
       _this.token = data.session.user.token;
       callback(error);
     });
@@ -85,6 +83,7 @@ KnackHQClient.prototype = {
       });
 
       response.on('end', function () {
+        // log(documentText)
         return callback(null, JSON.parse(documentText));
       });
     };
@@ -93,6 +92,12 @@ KnackHQClient.prototype = {
       request_options.method = 'POST';
     } else {
       request_options.method = 'GET';
+    }
+
+    if (options.method === 'PUT') {
+      request_options.method = 'PUT';
+    } else if (options.method === 'DELETE') {
+      request_options.method = 'DELETE';
     }
 
     var request = http_client.request(request_options, request_callback);
@@ -110,9 +115,57 @@ KnackHQClient.prototype = {
   objects: function(callback) {
     this.request({ path: 'v1/objects' }, callback);
   },
-  records: function(callback) {
-    // this.request({ path: })
-  }
+  object_records: function(options, callback) {
+    this.request({ path: '/v1/objects/' + object_key + '/records' }, callback);
+  },
+  create_record: function(options, callback) {
+    this.request({ path: '/v1/objects/' + options.object_key + '/records', method: 'POST', body: options.body }, callback);
+  },
+  delete_record: function(options, callback) {
+    if (debug) {
+      log('delete: /v1/objects/' + options.object_key + '/records/' + options.record_id);
+      log(options);
+      log('-----')
+    }
+
+    this.request({ path: '/v1/objects/' + options.object_key + '/records/' + options.record_id, method: 'DELETE' }, callback);
+  },
+  find_record: function(options, callback) {
+    this.request({ path: '/v1/objects/' + options.object_key + '/records' +
+      ((options.filters) ? '?filters=' + encodeURIComponent(JSON.stringify(options.filters)) : '') +
+      ((options.rows_per_page) ? ((options.filters) ? '&' : '?') + 'rows_per_page=' + options.rows_per_page : '') +
+      ((options.page) ? ((options.filters || options.rows_per_page) ? '&' : '?') + 'page=' + options.page : ''),
+      method: 'GET'
+    }, callback);
+  },
+  update_record: function(options, callback) {
+    if (debug) {
+      log('update: /v1/objects/' + options.object_key + '/records/' + options.record_id);
+      log(options);
+      log('-----')
+    }
+
+    this.request({ path: '/v1/objects/' + options.object_key + '/records/' + options.record_id, method: 'PUT', body: options.body }, callback);
+  },
+  upload_image: function(options, callback) {
+    var _this = this;
+    var req = request.post('https://api.knackhq.com/v1/applications/' + this.appid + '/assets/file/upload', function(err, resp, body) {
+      if (err) {
+        log('Error uploading image!');
+        return;
+      }
+
+      var resp_body = JSON.parse(body);
+      var image_id = resp_body.id;
+      var body = {};
+      body[options.field_key] = image_id;
+      body = _.merge(body, options.body);
+      _this.request({ path: '/v1/objects/' + options.object_key + '/records', method: 'POST', body: body }, callback);
+    });
+
+    var form = req.form();
+    form.append('files', fs.createReadStream(options.filename));
+  },
 };
 
 module.exports = new KnackHQClient();

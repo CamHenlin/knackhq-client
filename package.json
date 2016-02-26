@@ -1,6 +1,6 @@
 {
   "name": "knackhq-client",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "KnackHQ API Client Module",
   "main": "index.js",
   "scripts": {
@@ -9,6 +9,7 @@
   "author": "Cameron Henlin <cam.henlin@gmail.com> (https://github.com/CamHenlin/)",
   "license": "ISC",
   "dependencies": {
-    "follow-redirects": "0.0.3"
+    "follow-redirects": "0.0.3",
+    "lodash": "^4.5.1"
   }
 }
