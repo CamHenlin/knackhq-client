@@ -1,6 +1,6 @@
 {
   "name": "knackhq-client",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "KnackHQ API Client Module",
   "main": "index.js",
   "scripts": {
@@ -11,5 +11,9 @@
   "dependencies": {
     "follow-redirects": "0.0.3",
     "lodash": "^4.5.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CamHenlin/knackhq-client.git"
   }
 }
