@@ -31,7 +31,7 @@ KnackHQClient.prototype = {
     this.appid = options.appid;
 
     if (options.email && options.password) {
-      return this.authenticateUser({ email: options.email, password: options.password }, function(error) {
+      return this.authenticate_user({ email: options.email, password: options.password }, function(error) {
         return callback(error);
       });
     }
