@@ -116,7 +116,7 @@ KnackHQClient.prototype = {
     this.request({ path: 'v1/objects' }, callback);
   },
   object_records: function(options, callback) {
-    this.request({ path: '/v1/objects/' + object_key + '/records' }, callback);
+    this.request({ path: '/v1/objects/' + options.object_key + '/records?' + (options.format !== undefined ? options.format : '') }, callback);
   },
   create_record: function(options, callback) {
     this.request({ path: '/v1/objects/' + options.object_key + '/records', method: 'POST', body: options.body }, callback);
