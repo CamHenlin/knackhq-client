@@ -140,6 +140,4 @@ class KnackHQClient {
       body: body
     });
   }
-
-  deleteRecord()
 }
