@@ -1,3 +1,7 @@
+# Note: Breaking API changes in version 1.X
+
+If you are already using this client in your code, you should explicitly set its version to 0.1.1 in your `package.json` to avoid breaking changes that will definitely occur.
+
 # extremely simple node knackhq client
 
 ## How do I use it?
