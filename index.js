@@ -10,13 +10,9 @@ module.exports = class KnackHQClient {
   constructor(options) {
 
     this.host = development ? 'api.knackdev.com' : 'api.knack.com';
-
     this.token  = options.token;
-
     this.app_id = options.app_id;
-
     this.api_key = options.api_key;
-
     this.api_version = 'v1';
   }
 
