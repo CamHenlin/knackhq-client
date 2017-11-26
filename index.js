@@ -109,6 +109,14 @@ module.exports = class KnackHQClient {
     });
   }
 
+  async getRecord(object_key, record_key) {
+
+    return this.request({
+
+      path: `objects/${object_key}/records/${record_key}`
+    });
+  }
+
   async createRecord(object_key, body) {
 
     return this.request({
@@ -135,13 +143,13 @@ module.exports = class KnackHQClient {
     });
   }
 
-  async findRecord(object_key, filter_options) {
+  async findRecord(object_key, filters, page, rows_per_page) {
 
     return this.request({
-      path: '/v1/objects/' + options.object_key + '/records' +
-      ((options.filters) ? '?filters=' + encodeURIComponent(JSON.stringify(options.filters)) : '') +
-      ((options.rows_per_page) ? ((options.filters) ? '&' : '?') + 'rows_per_page=' + options.rows_per_page : '') +
-      ((options.page) ? ((options.filters || options.rows_per_page) ? '&' : '?') + 'page=' + options.page : '')
+      path: '/v1/objects/' + object_key + '/records' +
+      ((filters) ? '?filters=' + encodeURIComponent(JSON.stringify(filters)) : '') +
+      ((rows_per_page) ? ((filters) ? '&' : '?') + 'rows_per_page=' + rows_per_page : '') +
+      ((page) ? ((filters || rows_per_page) ? '&' : '?') + 'page=' + page : '')
     });
   }
 
