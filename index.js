@@ -1,171 +1,174 @@
 'use strict';
 
-var http_client;
-var debug = false;
-var dev = false;
+const _ = require('lodash');
+const redirects = require('follow-redirects');
+const development = true;
+const http_client = development ? redirects.http : redirects.https;
 
-if (dev) {
-  http_client = require('follow-redirects').http;
-} else {
-  http_client = require('follow-redirects').https;
-}
+module.exports = class KnackHQClient {
 
-var request = require('request');
-var fs = require('fs');
-var _ = require('lodash');
+  constructor(options) {
 
-var log = console.log;
+    this.host = development ? 'api.knackdev.com' : 'api.knack.com';
+    this.token  = options.token;
+    this.app_id = options.app_id;
+    this.api_key = options.api_key;
+    this.api_version = 'v1';
+  }
 
-var KnackHQClient = function() {};
+  async request_async(options) {
 
-KnackHQClient.prototype = {
-  mode: null,
-  token: null,
-  appid: null,
-  apikey: null,
-  api_url: (dev) ? 'api.localknack' : 'api.knackhq.com',
-  authenticate: function(options, callback) {
-    if (!options || !options.appid && (!options.token || !options.apikey || !(options.email && options.password))) { throw new Error('must pass appid and token, restkey, or credentials as options'); }
+    return new Promise((resolve, reject) => {
 
-    this.mode = (options.token || (options.email && options.password)) ? 'user' : 'root';
-    this.appid = options.appid;
+      const request = http_client.request(options, (response) => {
 
-    if (options.email && options.password) {
-      return this.authenticate_user({ email: options.email, password: options.password }, function(error) {
-        return callback(error);
+        if (!response || !response.on) {
+
+          return reject();
+        }
+
+        let document_text = '';
+
+        response.on('data', (chunk) => {
+
+          document_text += chunk;
+        });
+
+        response.on('end', () => {
+
+          resolve(JSON.parse(document_text));
+        });
       });
-    }
 
-    if (options.token) {
-      this.token = options.token;
-    }
+      request.on('error', reject);
 
-    if (options.apikey) {
-      this.apikey = options.apikey;
-    }
+      if (options.body) {
 
-    return callback();
-  },
-  authenticate_user: function(options, callback) {
-    var _this = this;
-    if (!options.email || !options.password) { return; }
+        request.write(JSON.stringify(options.body));
+      }
 
-    this.request({ body: { email: options.email, password: options.password }, path: '/v1/applications/' + this.appid + '/session' }, function(error, data) {
-      // log(error)
-      // log(data)
-      _this.token = data.session.user.token;
-      callback(error);
+      request.end();
     });
-  },
-  request: function(options, callback) {
-    var request_options = {
-      host: this.api_url,
-      path: options.path,
-      port: (dev) ? 3000 : 443,
+  }
+
+  async request(options) {
+
+    const request_options = {
+      host: this.host,
+      path: `/v1/${options.path}`,
+      port: development ? 3000 : 443,
       headers: {
-        'X-Knack-Application-Id': this.appid,
+        'X-Knack-Application-Id': this.app_id,
         'Content-Type': 'application/json'
       }
-    };
+    }
 
     if (this.token) {
+
       request_options.headers['Authorization'] = this.token;
-    } else if (this.apikey) {
-      request_options.headers['X-Knack-REST-API-Key'] = this.apikey;
+    } else if (this.api_key) {
+
+      request_options.headers['X-Knack-REST-API-Key'] = this.api_key;
     }
 
-    var request_callback = function(response) {
-      var documentText = ''
-      if (!response || !response.on) { return; }
+    request_options.method = options.method || (options.body ? 'POST' : 'GET');
 
-      response.on('data', function(chunk) {
-        documentText += chunk;
-      });
+    return this.request_async(request_options);
+  }
 
-      response.on('end', function () {
-        // log(documentText)
-        return callback(null, JSON.parse(documentText));
-      });
-    };
+  async authenticate(email, password) {
 
-    if (options.body) {
-      request_options.method = 'POST';
-    } else {
-      request_options.method = 'GET';
+    if (!email || !password) {
+
+      return;
     }
 
-    if (options.method === 'PUT') {
-      request_options.method = 'PUT';
-    } else if (options.method === 'DELETE') {
-      request_options.method = 'DELETE';
-    }
+    return this.request({
+      body: {
+        email,
+        password
+      },
+      path: `applications/${this.app_id}/session`
+    }).then(_.bind(function(data) {
 
-    var request = http_client.request(request_options, request_callback);
+      return this.token = data.session.user.token;
+    }, this));
+  }
 
-    request.on('error', function (error) {
-      callback(error, null);
+  async objects() {
+
+    return this.request({
+      path: 'objects'
     });
+  }
 
-    if (options.body) {
-      request.write(JSON.stringify(options.body));
-    }
+  async records(object_key) {
 
-    request.end();
-  },
-  objects: function(callback) {
-    this.request({ path: 'v1/objects' }, callback);
-  },
-  object_records: function(options, callback) {
-    this.request({ path: '/v1/objects/' + object_key + '/records' }, callback);
-  },
-  create_record: function(options, callback) {
-    this.request({ path: '/v1/objects/' + options.object_key + '/records', method: 'POST', body: options.body }, callback);
-  },
-  delete_record: function(options, callback) {
-    if (debug) {
-      log('delete: /v1/objects/' + options.object_key + '/records/' + options.record_id);
-      log(options);
-      log('-----')
-    }
-
-    this.request({ path: '/v1/objects/' + options.object_key + '/records/' + options.record_id, method: 'DELETE' }, callback);
-  },
-  find_record: function(options, callback) {
-    this.request({ path: '/v1/objects/' + options.object_key + '/records' +
-      ((options.filters) ? '?filters=' + encodeURIComponent(JSON.stringify(options.filters)) : '') +
-      ((options.rows_per_page) ? ((options.filters) ? '&' : '?') + 'rows_per_page=' + options.rows_per_page : '') +
-      ((options.page) ? ((options.filters || options.rows_per_page) ? '&' : '?') + 'page=' + options.page : ''),
-      method: 'GET'
-    }, callback);
-  },
-  update_record: function(options, callback) {
-    if (debug) {
-      log('update: /v1/objects/' + options.object_key + '/records/' + options.record_id);
-      log(options);
-      log('-----')
-    }
-
-    this.request({ path: '/v1/objects/' + options.object_key + '/records/' + options.record_id, method: 'PUT', body: options.body }, callback);
-  },
-  upload_image: function(options, callback) {
-    var _this = this;
-    var req = request.post('https://api.knackhq.com/v1/applications/' + this.appid + '/assets/file/upload', function(err, resp, body) {
-      if (err) {
-        log('Error uploading image!');
-        return;
-      }
-
-      var resp_body = JSON.parse(body);
-      var image_id = resp_body.id;
-      var body = {};
-      body[options.field_key] = image_id;
-      body = _.merge(body, options.body);
-      _this.request({ path: '/v1/objects/' + options.object_key + '/records', method: 'POST', body: body }, callback);
+    return this.request({
+      path: `objects/${object_key}/records`
     });
+  }
 
-    var form = req.form();
-    form.append('files', fs.createReadStream(options.filename));
-  },
-};
+  async getRecord(object_key, record_key) {
 
-module.exports = new KnackHQClient();
+    return this.request({
+
+      path: `objects/${object_key}/records/${record_key}`
+    });
+  }
+
+  async createRecord(object_key, body) {
+
+    return this.request({
+      path: `objects/${object_key}/records`,
+      body: body
+    });
+  }
+
+  async deleteRecord(object_key, record_key) {
+
+    return this.request({
+
+      path: `objects/${object_key}/records/${record_key}`,
+      method: 'DELETE'
+    });
+  }
+
+  async updateRecord(object_key, record_key, body) {
+
+    return this.request({
+      path: 'objects/${object_key}/records/${record_key}',
+      method: 'PUT',
+      body: body
+    });
+  }
+
+  async findRecord(object_key, filters, page, rows_per_page) {
+
+    return this.request({
+      path: '/v1/objects/' + object_key + '/records' +
+      ((filters) ? '?filters=' + encodeURIComponent(JSON.stringify(filters)) : '') +
+      ((rows_per_page) ? ((filters) ? '&' : '?') + 'rows_per_page=' + rows_per_page : '') +
+      ((page) ? ((filters || rows_per_page) ? '&' : '?') + 'page=' + page : '')
+    });
+  }
+
+  async upload(object_key, field_key, filename, body) {
+
+    return this.request({
+        path: `applications/${this.app_id}/assets/file/upload`,
+        body: _.extend({}, body)
+      })
+      .then((result) => {
+
+        const file_body = _.extend({}, body);
+        file_body[field_key] = result.id;
+
+        return {
+          path: `objects/${object_key}/records`,
+          body: file_body
+        };
+      })
+      .then(this.request);
+  }
+}

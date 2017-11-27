@@ -1,5 +1,19 @@
 # extremely simple node knackhq client
 
+# v1.0.0
+
+## Note: Breaking API changes in version 1.X
+
+If you are already using this client in your code, you should explicitly set its version to 0.1.1 in your `package.json` to avoid breaking changes.
+
+Please see `example.js` for implementation example. API differences from v0.1.1 are:
+
+- Parameters are arguments instead of an options object
+- Promise-based interface instead of callbacks
+- KnackHQClient instance must be initialized with an App ID, optionally including an API key for authentication
+
+# v0.1.1
+
 ## How do I use it?
 
 Very carefully!
