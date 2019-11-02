@@ -76,7 +76,7 @@ To do this, you'll need the object key of the object you want to create a record
 
 Finding a record optionally involves involves building a ``filter`` array that Knack will match records to. More about filters [here](http://helpdesk.knackhq.com/support/solutions/articles/5000447623-filters-search). Again, ``object_key`` and ``field_key`` are used. The ``rows_per_page`` option will specify how many records you would like to have returned. If we're interested in getting the next page of results, we can increment the ``page`` variable, which starts at page 0:
 
-    var filters = filters: [{ field: field_key, operator: 'is', value: 'my criteria' }] };
+    var filters = { filters: [{ field: field_key, operator: 'is', value: 'my criteria' }] };
     knack.find_record({ object_key: object_key, rows_per_page: 500, page: page, filters: filters }, function(error, data) {
       if (error) {
         // something bad happened!
